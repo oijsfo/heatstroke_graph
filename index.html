@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>熱中症・湿度チェッカー</title>
+    <!-- Tailwind CSSを読み込み (デザイン用) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* スライダーの見た目を少し調整 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid var(--accent-color, #4f46e5);
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 font-sans text-gray-800 flex items-center justify-center">
+
+    <div class="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        <!-- ヘッダー部分 -->
+        <div class="bg-indigo-600 p-6 text-white text-center">
+            <h1 class="text-2xl md:text-3xl font-bold mb-2">室温×湿度 熱中症リスクチェッカー</h1>
+            <p class="text-indigo-200 text-sm md:text-base">スライダーを動かして、現在の部屋の危険度を確認しましょう</p>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <!-- 判定結果表示エリア -->
+            <div class="mb-8 text-center">
+                <h2 class="text-gray-500 text-sm font-bold mb-2 tracking-wider">現在の警戒レベル</h2>
+                <div id="statusBox" class="inline-block px-10 py-4 rounded-xl shadow-inner transition-colors duration-300 border-2">
+                    <span id="statusText" class="text-3xl md:text-4xl font-extrabold tracking-widest">---</span>
+                </div>
+            </div>
+
+            <!-- グラフエリア -->
+            <div class="relative w-full h-64 md:h-80 bg-gray-50 rounded-lg border border-gray-200 mb-8 overflow-hidden">
+                <canvas id="graphCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+            </div>
+
+            <!-- 同期スイッチ -->
+            <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="syncToggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="locationInput" value="" class="border border-gray-300 rounded px-2 py-1 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="都市名を入力">
+                        <span class="font-bold text-gray-700">の天候と同期</span>
+                    </div>
+                </div>
+                <div id="syncStatus" class="text-sm font-medium text-gray-500">手動モード</div>
+            </div>
+
+            <!-- コントロール（スライダー） -->
+            <div class="space-y-6" id="sliderContainer">
+                <!-- 気温スライダー -->
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label for="tempSlider" class="font-bold text-gray-700 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                            室温 (気温)
+                        </label>
+                        <div class="font-bold text-xl"><span id="tempVal">28.0</span> <span class="text-sm text-gray-500">°C</span></div>
+                    </div>
+                    <input type="range" id="tempSlider" min="0" max="50" step="0.1" value="28">
+                </div>
+
+                <!-- 湿度スライダー -->
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <label for="humSlider" class="font-bold text-gray-700 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                            湿度
+                        </label>
+                        <div class="font-bold text-xl"><span id="humVal">60</span> <span class="text-sm text-gray-500">%</span></div>
+                    </div>
+                    <input type="range" id="humSlider" min="30" max="100" step="1" value="60">
+                </div>
+            </div>
+            
+            <!-- 凡例 -->
+            <div class="mt-8 flex flex-wrap justify-center gap-4 text-xs font-bold text-gray-600">
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-400"></span> ほぼ安全</div>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-400"></span> 注意</div>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-400"></span> 警戒</div>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-orange-400"></span> 厳重警戒</div>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500"></span> 危険</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // グラフとUI要素の取得
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const tempSlider = document.getElementById('tempSlider');
+        const humSlider = document.getElementById('humSlider');
+        const tempVal = document.getElementById('tempVal');
+        const humVal = document.getElementById('humVal');
+        const statusText = document.getElementById('statusText');
+        const statusBox = document.getElementById('statusBox');
+
+        // 同期関連の要素を追加
+        const syncToggle = document.getElementById('syncToggle');
+        const syncStatus = document.getElementById('syncStatus');
+        const sliderContainer = document.getElementById('sliderContainer');
+        const locationInput = document.getElementById('locationInput');
+        let syncInterval = null;
+
+        // グラフの描画範囲
+        const MIN_T = 0, MAX_T = 50;
+        const MIN_H = 30, MAX_H = 100;
+
+        // グラフ描画用の余白
+        const PAD_L = 40, PAD_B = 30, PAD_R = 15, PAD_T = 15;
+
+        // 背景キャッシュ用キャンバス（毎回の描画を軽くするため）
+        const bgCanvas = document.createElement('canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+
+        // 暑さ指数(WBGT)の簡易近似計算 (日本環境省の指針ベース)
+        function calcWBGT(t, h) {
+            return 0.724 * t + 0.053 * h + 0.0041 * t * h - 4.5;
+        }
+
+        // WBGT値から警戒レベルと色を取得する関数
+        function getLevelAndColor(wbgt) {
+            if (wbgt >= 31) return { level: '危険', bg: '#ef4444', text: 'text-red-600', border: 'border-red-500', bgLight: '#fef2f2' };
+            if (wbgt >= 28) return { level: '厳重警戒', bg: '#fb923c', text: 'text-orange-600', border: 'border-orange-400', bgLight: '#fff7ed' };
+            if (wbgt >= 25) return { level: '警戒', bg: '#facc15', text: 'text-yellow-600', border: 'border-yellow-400', bgLight: '#fefce8' };
+            if (wbgt >= 21) return { level: '注意', bg: '#60a5fa', text: 'text-blue-600', border: 'border-blue-400', bgLight: '#eff6ff' };
+            return { level: 'ほぼ安全', bg: '#4ade80', text: 'text-green-600', border: 'border-green-400', bgLight: '#f0fdf4' };
+        }
+
+        // グラフ背景（ヒートマップ）の初期化・描画
+        function initGraph() {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) return;
+
+            // 高解像度ディスプレイ(Retina等)対応
+            const dpr = window.devicePixelRatio || 1;
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            bgCanvas.width = canvas.width;
+            bgCanvas.height = canvas.height;
+            bgCtx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = rect.height;
+            const graphW = w - PAD_L - PAD_R;
+            const graphH = h - PAD_T - PAD_B;
+
+            // 背景ヒートマップの描画 (3x3ピクセルのブロック単位で描画)
+            const blockSize = 3;
+            for (let x = 0; x <= graphW; x += blockSize) {
+                for (let y = 0; y <= graphH; y += blockSize) {
+                    const t = MIN_T + (x / graphW) * (MAX_T - MIN_T);
+                    const hum = MAX_H - (y / graphH) * (MAX_H - MIN_H); // Y軸は上が100%
+                    const wbgt = calcWBGT(t, hum);
+                    bgCtx.fillStyle = getLevelAndColor(wbgt).bg;
+                    bgCtx.fillRect(PAD_L + x, PAD_T + y, blockSize, blockSize);
+                }
+            }
+
+            // グリッド線と目盛りの描画
+            bgCtx.fillStyle = '#6b7280'; // text-gray-500
+            bgCtx.font = '10px sans-serif';
+
+            // X軸 (気温)
+            bgCtx.textAlign = 'center';
+            bgCtx.textBaseline = 'top';
+            for(let t = 0; t <= 50; t += 5) {
+                const x = PAD_L + ((t - MIN_T) / (MAX_T - MIN_T)) * graphW;
+                bgCtx.fillText(t + '°C', x, PAD_T + graphH + 8);
+                // 縦のグリッド線
+                bgCtx.fillStyle = 'rgba(255,255,255,0.3)';
+                bgCtx.fillRect(x, PAD_T, 1, graphH);
+                bgCtx.fillStyle = '#6b7280';
+            }
+
+            // Y軸 (湿度)
+            bgCtx.textAlign = 'right';
+            bgCtx.textBaseline = 'middle';
+            for(let hum = 30; hum <= 100; hum += 10) {
+                const y = PAD_T + graphH - ((hum - MIN_H) / (MAX_H - MIN_H)) * graphH;
+                bgCtx.fillText(hum + '%', PAD_L - 8, y);
+                // 横のグリッド線
+                bgCtx.fillStyle = 'rgba(255,255,255,0.3)';
+                bgCtx.fillRect(PAD_L, y, graphW, 1);
+                bgCtx.fillStyle = '#6b7280';
+            }
+        }
+
+        // メインの描画ループ（スライダーが動くたびに呼ばれる）
+        function draw() {
+            if (bgCanvas.width === 0 || bgCanvas.height === 0) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            const graphW = w - PAD_L - PAD_R;
+            const graphH = h - PAD_T - PAD_B;
+
+            // 1. キャッシュした背景を描画
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(bgCanvas, 0, 0, w, h);
+
+            // 2. 現在の値を取得
+            const currentT = parseFloat(tempSlider.value);
+            const currentH = parseFloat(humSlider.value);
+
+            // 3. マーカーの座標を計算
+            const x = PAD_L + ((currentT - MIN_T) / (MAX_T - MIN_T)) * graphW;
+            const y = PAD_T + graphH - ((currentH - MIN_H) / (MAX_H - MIN_H)) * graphH;
+
+            // 4. マーカーを描画 (現在地)
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#1f2937'; // gray-800
+            ctx.stroke();
+
+            // 5. UIテキストの更新
+            tempVal.innerText = currentT.toFixed(1);
+            humVal.innerText = currentH;
+
+            const wbgt = calcWBGT(currentT, currentH);
+            const info = getLevelAndColor(wbgt);
+
+            statusText.innerText = info.level;
+            
+            // 状態に応じた色の適用
+            statusBox.style.backgroundColor = info.bgLight;
+            statusBox.className = `inline-block px-10 py-4 rounded-xl shadow-inner transition-colors duration-300 border-2 ${info.text} ${info.border}`;
+            
+            // スライダーのアクセントカラーを変更
+            document.documentElement.style.setProperty('--accent-color', info.bg);
+        }
+
+        // イベントリスナーの登録
+        tempSlider.addEventListener('input', draw);
+        humSlider.addEventListener('input', draw);
+
+        // コンテナのサイズ変更を監視（Tailwindの読み込み完了時やウィンドウリサイズ時に実行）
+        const resizeObserver = new ResizeObserver(() => {
+            initGraph();
+            draw();
+        });
+        resizeObserver.observe(canvas.parentElement);
+
+        // --- 天気同期機能 ---
+        async function fetchWeatherData() {
+            try {
+                syncStatus.innerText = 'データ取得中...';
+                syncStatus.classList.remove('text-red-500');
+                
+                const locationName = locationInput.value || '立川市';
+                
+                // 1. 地名から緯度経度を取得 (Open-Meteo Geocoding API)
+                // 検索結果がない場合はデフォルトで立川市の座標を使用するフォールバックを追加
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=ja&format=json`;
+                const geoResponse = await fetch(geoUrl);
+                
+                let lat, lon, foundName = locationName;
+                if (geoResponse.ok) {
+                    const geoData = await geoResponse.json();
+                    if (geoData.results && geoData.results.length > 0) {
+                        lat = geoData.results[0].latitude;
+                        lon = geoData.results[0].longitude;
+                        foundName = geoData.results[0].name;
+                    } else {
+                        // 地名が見つからない場合は立川市(35.6995, 139.4130)をデフォルトに
+                        lat = 35.6995;
+                        lon = 139.4130;
+                        foundName = "立川市(地名不明のため)";
+                    }
+                } else {
+                    lat = 35.6995;
+                    lon = 139.4130;
+                    foundName = "立川市(同期エラーのため)";
+                }
+
+                // 2. 緯度経度から天気を取得
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m&timezone=Asia%2FTokyo`;
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('APIの応答エラー');
+                const data = await response.json();
+                
+                const temp = data.current.temperature_2m;
+                const hum = data.current.relative_humidity_2m;
+                
+                tempSlider.value = temp;
+                humSlider.value = hum;
+                draw(); // グラフを更新
+                
+                const time = new Date().toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
+                syncStatus.innerText = `${foundName} - 最終更新: ${time}`;
+            } catch (error) {
+                console.error('天気データの取得に失敗しました:', error);
+                syncStatus.innerText = '取得失敗';
+                syncStatus.classList.add('text-red-500');
+                
+                syncToggle.checked = false;
+                toggleSync(); // エラー時はオフ状態に戻す
+                
+                setTimeout(() => {
+                    if (!syncToggle.checked) syncStatus.classList.remove('text-red-500');
+                }, 3000);
+            }
+        }
+
+        function toggleSync() {
+            if (syncToggle.checked) {
+                // 同期オン: スライダーと入力欄を無効化して少し薄くする
+                tempSlider.disabled = true;
+                humSlider.disabled = true;
+                locationInput.disabled = true;
+                locationInput.classList.add('bg-gray-100');
+                sliderContainer.classList.add('opacity-50', 'pointer-events-none');
+                
+                fetchWeatherData();
+                // 10分ごとに自動更新
+                syncInterval = setInterval(fetchWeatherData, 10 * 60 * 1000);
+            } else {
+                // 同期オフ: スライダーと入力欄を有効化して元に戻す
+                tempSlider.disabled = false;
+                humSlider.disabled = false;
+                locationInput.disabled = false;
+                locationInput.classList.remove('bg-gray-100');
+                sliderContainer.classList.remove('opacity-50', 'pointer-events-none');
+                
+                syncStatus.innerText = '手動モード';
+                if (syncInterval) {
+                    clearInterval(syncInterval);
+                    syncInterval = null;
+                }
+            }
+        }
+
+        syncToggle.addEventListener('change', toggleSync);
+
+    </script>
+</body>
+</html>
