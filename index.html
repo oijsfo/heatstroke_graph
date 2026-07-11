@@ -68,7 +68,7 @@
                         <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                     </label>
                     <div class="flex items-center gap-2">
-                        <input type="text" id="locationInput" value="" class="border border-gray-300 rounded px-2 py-1 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="都市名を入力">
+                        <input type="text" id="locationInput" value="地名を入力" class="border border-gray-300 rounded px-2 py-1 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="都市名を入力">
                         <span class="font-bold text-gray-700">の天候と同期</span>
                     </div>
                 </div>
@@ -86,7 +86,7 @@
                         </label>
                         <div class="font-bold text-xl"><span id="tempVal">28.0</span> <span class="text-sm text-gray-500">°C</span></div>
                     </div>
-                    <input type="range" id="tempSlider" min="0" max="50" step="0.1" value="28">
+                    <input type="range" id="tempSlider" min="0" max="50" step="0.1" value="25">
                 </div>
 
                 <!-- 湿度スライダー -->
@@ -98,7 +98,7 @@
                         </label>
                         <div class="font-bold text-xl"><span id="humVal">60</span> <span class="text-sm text-gray-500">%</span></div>
                     </div>
-                    <input type="range" id="humSlider" min="30" max="100" step="1" value="60">
+                    <input type="range" id="humSlider" min="30" max="100" step="1" value="50">
                 </div>
             </div>
             
@@ -284,10 +284,7 @@
                 syncStatus.innerText = 'データ取得中...';
                 syncStatus.classList.remove('text-red-500');
                 
-                const locationName = locationInput.value || '立川市';
-                
                 // 1. 地名から緯度経度を取得 (Open-Meteo Geocoding API)
-                // 検索結果がない場合はデフォルトで立川市の座標を使用するフォールバックを追加
                 const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=ja&format=json`;
                 const geoResponse = await fetch(geoUrl);
                 
@@ -299,15 +296,14 @@
                         lon = geoData.results[0].longitude;
                         foundName = geoData.results[0].name;
                     } else {
-                        // 地名が見つからない場合は立川市(35.6995, 139.4130)をデフォルトに
-                        lat = 35.6995;
-                        lon = 139.4130;
-                        foundName = "立川市(地名不明のため)";
+                        lat = null;
+                        lon = null;
+                        foundName = "地名不明";
                     }
                 } else {
-                    lat = 35.6995;
-                    lon = 139.4130;
-                    foundName = "立川市(同期エラーのため)";
+                    lat = null;
+                    lon = null;
+                    foundName = "同期エラー";
                 }
 
                 // 2. 緯度経度から天気を取得
