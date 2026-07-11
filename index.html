@@ -283,6 +283,8 @@
             try {
                 syncStatus.innerText = 'データ取得中...';
                 syncStatus.classList.remove('text-red-500');
+
+                const locationName = locationInput.value || '';
                 
                 // 1. 地名から緯度経度を取得 (Open-Meteo Geocoding API)
                 const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=ja&format=json`;
