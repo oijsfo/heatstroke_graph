@@ -38,20 +38,37 @@
 </head>
 <body class="bg-gray-100 min-h-screen p-4 md:p-8 font-sans text-gray-800 flex items-center justify-center">
 
-    <div class="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div class="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden my-4">
         
         <!-- ヘッダー部分 -->
         <div class="bg-indigo-600 p-6 text-white text-center">
             <h1 class="text-2xl md:text-3xl font-bold mb-2">室温×湿度 熱中症リスクチェッカー</h1>
-            <p class="text-indigo-200 text-sm md:text-base">スライダーを動かして、現在の部屋の危険度を確認しましょう</p>
+            <p class="text-indigo-200 text-sm md:text-base">現在の状況に合わせて自動アドバイス＆水分摂取ガイドを表示します</p>
         </div>
 
         <div class="p-6 md:p-8">
-            <!-- 判定結果表示エリア -->
-            <div class="mb-8 text-center">
-                <h2 class="text-gray-500 text-sm font-bold mb-2 tracking-wider">現在の警戒レベル</h2>
-                <div id="statusBox" class="inline-block px-10 py-4 rounded-xl shadow-inner transition-colors duration-300 border-2">
-                    <span id="statusText" class="text-3xl md:text-4xl font-extrabold tracking-widest">---</span>
+            
+            <!-- 判定結果 ＆ リアルタイム個別ガイド表示エリア -->
+            <div class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+                <!-- 左側：警戒レベル -->
+                <div class="md:col-span-1 bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col justify-center items-center">
+                    <h2 class="text-gray-500 text-xs font-bold mb-3 tracking-wider uppercase">現在の警戒レベル</h2>
+                    <div id="statusBox" class="w-full text-center py-4 rounded-xl shadow-inner transition-colors duration-300 border-2">
+                        <span id="statusText" class="text-2xl md:text-3xl font-extrabold tracking-widest">---</span>
+                    </div>
+                </div>
+                <!-- 右側：動的補給アドバイス -->
+                <div class="md:col-span-2 bg-gray-50 p-6 rounded-xl border border-gray-200 flex flex-col justify-center">
+                    <h3 class="text-gray-700 font-bold mb-2 flex items-center gap-2 text-sm md:text-base">
+                        <span class="flex h-3 w-3 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500" id="liveDot"></span>
+                        </span>
+                        リアルタイム水分補給アドバイス
+                    </h3>
+                    <p id="currentGuideText" class="text-sm text-gray-600 leading-relaxed">
+                        スライダーを動かすか、現在の天候に同期するとアドバイスが表示されます。
+                    </p>
                 </div>
             </div>
 
@@ -68,7 +85,7 @@
                         <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                     </label>
                     <div class="flex items-center gap-2">
-                        <input type="text" id="locationInput" value="" class="border border-gray-300 rounded px-2 py-1 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" placeholder="都市名を入力">
+                        <input type="text" id="locationInput" value="" class="border border-gray-300 rounded px-2 py-1 w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-center" placeholder="都市名（空欄で現在地）">
                         <span class="font-bold text-gray-700">の天候と同期</span>
                     </div>
                 </div>
@@ -86,7 +103,7 @@
                         </label>
                         <div class="font-bold text-xl"><span id="tempVal">28.0</span> <span class="text-sm text-gray-500">°C</span></div>
                     </div>
-                    <input type="range" id="tempSlider" min="0" max="50" step="0.1" value="25">
+                    <input type="range" id="tempSlider" min="0" max="50" step="0.1" value="28">
                 </div>
 
                 <!-- 湿度スライダー -->
@@ -98,7 +115,7 @@
                         </label>
                         <div class="font-bold text-xl"><span id="humVal">60</span> <span class="text-sm text-gray-500">%</span></div>
                     </div>
-                    <input type="range" id="humSlider" min="30" max="100" step="1" value="50">
+                    <input type="range" id="humSlider" min="30" max="100" step="1" value="60">
                 </div>
             </div>
             
@@ -109,6 +126,68 @@
                 <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-400"></span> 警戒</div>
                 <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-orange-400"></span> 厳重警戒</div>
                 <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-500"></span> 危険</div>
+            </div>
+
+            <!-- 熱中症警戒レベル別・水分摂取ガイド一覧 (追加) -->
+            <div class="mt-8 border-t border-gray-200 pt-8">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    熱中症警戒レベル別・水分摂取ガイド一覧
+                </h3>
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm text-left">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 font-bold text-gray-700 whitespace-nowrap">レベル</th>
+                                <th class="px-4 py-3 font-bold text-gray-700 whitespace-nowrap">WBGT基準</th>
+                                <th class="px-4 py-3 font-bold text-gray-700 whitespace-nowrap">1時間の水分補給目安</th>
+                                <th class="px-4 py-3 font-bold text-gray-700">主な日常の対策ルール</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr class="hover:bg-red-50/50 transition-colors">
+                                <td class="px-4 py-3 font-bold text-red-600 flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-red-500"></span>危険
+                                </td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">31℃以上</td>
+                                <td class="px-4 py-3 font-bold text-red-700 whitespace-nowrap">500ml以上</td>
+                                <td class="px-4 py-3 text-gray-600">運動や長時間の屋外作業は原則中止。室内でもエアコンを必ず使用し、塩分もセットで補給。</td>
+                            </tr>
+                            <tr class="hover:bg-orange-50/50 transition-colors">
+                                <td class="px-4 py-3 font-bold text-orange-600 flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-orange-400"></span>厳重警戒
+                                </td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">28〜31℃未満</td>
+                                <td class="px-4 py-3 font-bold text-orange-700 whitespace-nowrap">350〜500ml</td>
+                                <td class="px-4 py-3 text-gray-600">外出時は日傘や帽子を使い長時間の活動は避ける。喉が渇く前に水分と塩分をこまめに。</td>
+                            </tr>
+                            <tr class="hover:bg-yellow-50/50 transition-colors">
+                                <td class="px-4 py-3 font-bold text-yellow-600 flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-yellow-400"></span>警戒
+                                </td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">25〜28℃未満</td>
+                                <td class="px-4 py-3 font-bold text-yellow-700 whitespace-nowrap">200〜250ml</td>
+                                <td class="px-4 py-3 text-gray-600">運動や重労働を行う場合は十分に休息を取り、コップ1杯の補給を忘れずに。</td>
+                            </tr>
+                            <tr class="hover:bg-blue-50/50 transition-colors">
+                                <td class="px-4 py-3 font-bold text-blue-600 flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-blue-400"></span>注意
+                                </td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">21〜25℃未満</td>
+                                <td class="px-4 py-3 font-bold text-blue-700 whitespace-nowrap">100〜150ml</td>
+                                <td class="px-4 py-3 text-gray-600">通常の生活では安全ですが、強い負荷をかける活動や、湿った室内では意識して補給。</td>
+                            </tr>
+                            <tr class="hover:bg-green-50/50 transition-colors">
+                                <td class="px-4 py-3 font-bold text-green-600 flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-green-400"></span>ほぼ安全
+                                </td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">21℃未満</td>
+                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">適宜（コップ半分程度）</td>
+                                <td class="px-4 py-3 text-gray-600">日常生活での危険は低いですが、1時間おきなど定期的に水分（水や麦茶など）を補給しましょう。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
         </div>
@@ -124,8 +203,10 @@
         const humVal = document.getElementById('humVal');
         const statusText = document.getElementById('statusText');
         const statusBox = document.getElementById('statusBox');
+        const currentGuideText = document.getElementById('currentGuideText');
+        const liveDot = document.getElementById('liveDot');
 
-        // 同期関連の要素を追加
+        // 同期関連の要素
         const syncToggle = document.getElementById('syncToggle');
         const syncStatus = document.getElementById('syncStatus');
         const sliderContainer = document.getElementById('sliderContainer');
@@ -148,13 +229,48 @@
             return 0.724 * t + 0.053 * h + 0.0041 * t * h - 4.5;
         }
 
-        // WBGT値から警戒レベルと色を取得する関数
+        // WBGT値から警戒レベルと色、及びリアルタイムアドバイスを取得する関数
         function getLevelAndColor(wbgt) {
-            if (wbgt >= 31) return { level: '危険', bg: '#ef4444', text: 'text-red-600', border: 'border-red-500', bgLight: '#fef2f2' };
-            if (wbgt >= 28) return { level: '厳重警戒', bg: '#fb923c', text: 'text-orange-600', border: 'border-orange-400', bgLight: '#fff7ed' };
-            if (wbgt >= 25) return { level: '警戒', bg: '#facc15', text: 'text-yellow-600', border: 'border-yellow-400', bgLight: '#fefce8' };
-            if (wbgt >= 21) return { level: '注意', bg: '#60a5fa', text: 'text-blue-600', border: 'border-blue-400', bgLight: '#eff6ff' };
-            return { level: 'ほぼ安全', bg: '#4ade80', text: 'text-green-600', border: 'border-green-400', bgLight: '#f0fdf4' };
+            if (wbgt >= 31) return { 
+                level: '危険', 
+                bg: '#ef4444', 
+                text: 'text-red-600', 
+                border: 'border-red-500', 
+                bgLight: '#fef2f2',
+                guide: '【特別警戒】外出はなるべく避け、涼しい室内に留まりエアコンを必ず使用してください。<strong>1時間あたり500ml以上</strong>の水分を摂取し、塩分（0.1〜0.2%の食塩水やスポーツドリンク）も同時に必ず補給しましょう。'
+            };
+            if (wbgt >= 28) return { 
+                level: '厳重警戒', 
+                bg: '#fb923c', 
+                text: 'text-orange-600', 
+                border: 'border-orange-400', 
+                bgLight: '#fff7ed',
+                guide: '【警戒行動】激しい運動や炎天下の長時間の外出を避けてください。室内でも<strong>1時間あたり350〜500ml</strong>を目安とし、喉が渇く前に水分と塩分をこまめに補給しましょう。'
+            };
+            if (wbgt >= 25) return { 
+                level: '警戒', 
+                bg: '#facc15', 
+                text: 'text-yellow-600', 
+                border: 'border-yellow-400', 
+                bgLight: '#fefce8',
+                guide: '【積極的補給】運動や重労働時は体温が上がりやすいため危険です。定期的に日陰や涼しい場所で休息を取り、<strong>1時間あたり200〜250ml（コップ1杯）</strong>を目安に水分補給を行ってください。'
+            };
+            if (wbgt >= 21) return { 
+                level: '注意', 
+                bg: '#60a5fa', 
+                text: 'text-blue-600', 
+                border: 'border-blue-400', 
+                bgLight: '#eff6ff',
+                guide: '【定期補給】通常の生活では安全ですが、強度の高い運動や作業を行う際、または蒸し暑い環境ではリスクが上がります。<strong>1時間あたり100〜150ml（コップ半分〜1杯）</strong>を目安にこまめに水分補給を行いましょう。'
+            };
+            return { 
+                level: 'ほぼ安全', 
+                bg: '#4ade80', 
+                text: 'text-green-600', 
+                border: 'border-green-400', 
+                bgLight: '#f0fdf4',
+                guide: '【基本補給】日常生活での危険は極めて低いですが、油断せず、起床時や入浴の前後、喉が渇かなくても1時間おきなど定期的な水分摂取（水や麦茶など）を心がけてください。'
+            };
         }
 
         // グラフ背景（ヒートマップ）の初期化・描画
@@ -261,8 +377,12 @@
             
             // 状態に応じた色の適用
             statusBox.style.backgroundColor = info.bgLight;
-            statusBox.className = `inline-block px-10 py-4 rounded-xl shadow-inner transition-colors duration-300 border-2 ${info.text} ${info.border}`;
+            statusBox.className = `w-full text-center py-4 rounded-xl shadow-inner transition-colors duration-300 border-2 ${info.text} ${info.border}`;
             
+            // 動的アドバイステキストとリアルタイムドットの更新
+            currentGuideText.innerHTML = info.guide;
+            liveDot.style.backgroundColor = info.bg;
+
             // スライダーのアクセントカラーを変更
             document.documentElement.style.setProperty('--accent-color', info.bg);
         }
@@ -279,40 +399,65 @@
         resizeObserver.observe(canvas.parentElement);
 
         // --- 天気同期機能 ---
+        // ブラウザのGeolocation APIを非同期で呼び出すユーティリティ
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('お使いのブラウザは位置情報に対応していません'));
+                }
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 8000,
+                    maximumAge: 0
+                });
+            });
+        }
+
         async function fetchWeatherData() {
             try {
                 syncStatus.innerText = 'データ取得中...';
                 syncStatus.classList.remove('text-red-500');
+                
+                const locationName = locationInput.value.trim();
+                
+                let lat, lon, foundName = "";
 
-                const locationName = locationInput.value || '';
-                
-                // 1. 地名から緯度経度を取得 (Open-Meteo Geocoding API)
-                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=ja&format=json`;
-                const geoResponse = await fetch(geoUrl);
-                
-                let lat, lon, foundName = locationName;
-                if (geoResponse.ok) {
+                if (!locationName) {
+                    // 1. 地名が空欄の場合は現在地のGPSを利用
+                    syncStatus.innerText = '現在地を取得中...';
+                    try {
+                        const position = await getCurrentPosition();
+                        lat = position.coords.latitude;
+                        lon = position.coords.longitude;
+                        foundName = "現在地";
+                    } catch (geoError) {
+                        console.warn(geoError);
+                        throw new Error('地名を入力するか、位置情報を許可してください');
+                    }
+                } else {
+                    // 2. 地名が入力されている場合は緯度経度を検索 (Open-Meteo Geocoding API)
+                    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=ja&format=json`;
+                    const geoResponse = await fetch(geoUrl);
+                    
+                    if (!geoResponse.ok) throw new Error('位置情報サーバーの接続に失敗しました');
+                    
                     const geoData = await geoResponse.json();
                     if (geoData.results && geoData.results.length > 0) {
                         lat = geoData.results[0].latitude;
                         lon = geoData.results[0].longitude;
-                        foundName = geoData.results[0].name;
+                        
+                        const result = geoData.results[0];
+                        foundName = result.admin1 ? `${result.admin1} ${result.name}` : result.name;
                     } else {
-                        lat = 0;
-                        lon = 0;
-                        foundName = "地名不明";
+                        throw new Error('該当する地名が見つかりませんでした');
                     }
-                } else {
-                    lat = 0;
-                    lon = 0;
-                    foundName = "同期エラー";
                 }
 
-                // 2. 緯度経度から天気を取得
+                // 3. 緯度経度からリアルタイム天気を取得
                 const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m&timezone=Asia%2FTokyo`;
                 
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('APIの応答エラー');
+                if (!response.ok) throw new Error('天気データの取得に失敗しました');
                 const data = await response.json();
                 
                 const temp = data.current.temperature_2m;
@@ -320,27 +465,34 @@
                 
                 tempSlider.value = temp;
                 humSlider.value = hum;
-                draw(); // グラフを更新
+                draw(); // グラフとアドバイスを更新
                 
                 const time = new Date().toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
                 syncStatus.innerText = `${foundName} - 最終更新: ${time}`;
             } catch (error) {
-                console.error('天気データの取得に失敗しました:', error);
-                syncStatus.innerText = '取得失敗';
+                console.error('天気同期失敗:', error);
+                
+                // エラー内容を画面に明確に表示
+                syncStatus.innerText = error.message;
                 syncStatus.classList.add('text-red-500');
                 
+                // スイッチを自動でOFFに戻す
                 syncToggle.checked = false;
-                toggleSync(); // エラー時はオフ状態に戻す
+                toggleSync(); 
                 
+                // 4秒後にエラー文字色をクリア
                 setTimeout(() => {
-                    if (!syncToggle.checked) syncStatus.classList.remove('text-red-500');
-                }, 3000);
+                    if (!syncToggle.checked) {
+                        syncStatus.classList.remove('text-red-500');
+                        syncStatus.innerText = '手動モード';
+                    }
+                }, 4000);
             }
         }
 
         function toggleSync() {
             if (syncToggle.checked) {
-                // 同期オン: スライダーと入力欄を無効化して少し薄くする
+                // 同期オン: スライダーと入力欄を無効化
                 tempSlider.disabled = true;
                 humSlider.disabled = true;
                 locationInput.disabled = true;
@@ -351,7 +503,7 @@
                 // 10分ごとに自動更新
                 syncInterval = setInterval(fetchWeatherData, 10 * 60 * 1000);
             } else {
-                // 同期オフ: スライダーと入力欄を有効化して元に戻す
+                // 同期オフ: スライダーと入力欄を有効化
                 tempSlider.disabled = false;
                 humSlider.disabled = false;
                 locationInput.disabled = false;
