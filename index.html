@@ -104,7 +104,7 @@
                         </label>
                         <div class="font-bold text-xl"><span id="tempVal">28.0</span> <span class="text-sm text-gray-500">°C</span></div>
                     </div>
-                    <input type="range" id="tempSlider" min="0" max="50" step="0.1" value="28">
+                    <input type="range" id="tempSlider" min="10" max="50" step="0.1" value="28">
                 </div>
 
                 <!-- 湿度スライダー -->
@@ -214,8 +214,8 @@
         const locationInput = document.getElementById('locationInput');
         let syncInterval = null;
 
-        // グラフの描画範囲
-        const MIN_T = 0, MAX_T = 50;
+        // グラフの描画範囲 (10℃〜50℃に調整)
+        const MIN_T = 10, MAX_T = 50;
         const MIN_H = 30, MAX_H = 100;
 
         // グラフ描画用の余白
@@ -311,10 +311,10 @@
             bgCtx.fillStyle = '#6b7280'; // text-gray-500
             bgCtx.font = '10px sans-serif';
 
-            // X軸 (気温)
+            // X軸 (気温: 10℃からスタートするように修正)
             bgCtx.textAlign = 'center';
             bgCtx.textBaseline = 'top';
-            for(let t = 0; t <= 50; t += 5) {
+            for(let t = 10; t <= 50; t += 5) {
                 const x = PAD_L + ((t - MIN_T) / (MAX_T - MIN_T)) * graphW;
                 bgCtx.fillText(t + '°C', x, PAD_T + graphH + 8);
                 // 縦のグリッド線
@@ -464,7 +464,8 @@
                 const temp = data.current.temperature_2m;
                 const hum = data.current.relative_humidity_2m;
                 
-                tempSlider.value = temp;
+                // 10℃未満のデータだった場合はスライダーの制限（10℃）に補正して入力
+                tempSlider.value = Math.max(10, temp);
                 humSlider.value = hum;
                 draw(); // グラフとアドバイスを更新
                 
